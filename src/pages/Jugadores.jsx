@@ -1,52 +1,71 @@
 import { useState } from 'react'
+import { useApi } from '../hooks/useApi.js'
 import JugadorCard from '../components/JugadorCard.jsx'
-import { jugadores } from '../data/jugadores.js'
+import SelectorCompeticion from '../components/SelectorCompeticion.jsx'
 
 function Jugadores() {
+  const [competicion, setCompeticion] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [soloDelanteros, setSoloDelanteros] = useState(false)
 
-  const visibles = jugadores.filter((jugador) => {
+  const ruta = competicion
+    ? `/api/jugadores?competicion=${competicion}`
+    : '/api/jugadores'
+
+  const { datos, cargando, error } = useApi(ruta)
+
+  // El filtro sigue siendo el tuyo: ahora trabaja sobre lo que llego de la API.
+  const visibles = (datos ?? []).filter((jugador) => {
     const coincideBusqueda =
       jugador.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       jugador.equipo.toLowerCase().includes(busqueda.toLowerCase())
 
-    const coincidePosicion = !soloDelanteros || jugador.posicion === 'Delantero'
+    const coincidePosicion = !soloDelanteros || jugador.posicion === 'Attacker'
 
     return coincideBusqueda && coincidePosicion
   })
 
   return (
     <>
-      <input
-        type="text"
-        placeholder="Buscar jugador o equipo..."
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-      />
+      <div className="filtros">
+        <SelectorCompeticion valor={competicion} alCambiar={setCompeticion} />
 
-      <label>
         <input
-          type="checkbox"
-          checked={soloDelanteros}
-          onChange={(e) => setSoloDelanteros(e.target.checked)}
+          type="text"
+          placeholder="Buscar jugador o equipo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
         />
-        Solo delanteros
-      </label>
 
-      <h2>Jugadores ({visibles.length})</h2>
-      {visibles.map((jugador) => (
-        <JugadorCard
-          key={jugador.id}
-          id={jugador.id}
-          nombre={jugador.nombre}
-          equipo={jugador.equipo}
-          posicion={jugador.posicion}
-          goles={jugador.goles}
-          asistencias={jugador.asistencias}
-          campo={jugador.campo}
-        />
-      ))}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={soloDelanteros}
+            onChange={(e) => setSoloDelanteros(e.target.checked)}
+          />
+          Solo delanteros
+        </label>
+      </div>
+
+      {cargando && <p className="aviso">Cargando jugadores...</p>}
+      {error && <p className="error">{error}</p>}
+
+      {!cargando && !error && (
+        <>
+          <h2>Goleadores ({visibles.length})</h2>
+          <div className="grid">
+            {visibles.map((jugador) => (
+              <JugadorCard
+                key={`${jugador.id}-${jugador.competicion_id}`}
+                {...jugador}
+              />
+            ))}
+          </div>
+          {visibles.length === 0 && (
+            <p className="aviso">Ningun jugador coincide con el filtro.</p>
+          )}
+        </>
+      )}
     </>
   )
 }

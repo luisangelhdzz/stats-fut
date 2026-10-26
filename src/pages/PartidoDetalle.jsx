@@ -1,32 +1,62 @@
 import { useParams, Link } from 'react-router'
-import { partidos } from '../data/partidos.js'
+import { useApi } from '../hooks/useApi.js'
+import { formatearFecha } from '../lib/formato.js'
 
 function PartidoDetalle() {
   const { id } = useParams()
-  const partido = partidos.find((p) => p.id === Number(id))
+  const { datos: partido, cargando, error } = useApi(`/api/partidos/${id}`)
 
-  if (!partido) {
+  if (cargando) return <p className="aviso">Cargando...</p>
+
+  if (error) {
     return (
       <>
-        <p>No encontré ese partido.</p>
-        <Link to="/partidos">← Volver a partidos</Link>
+        <p className="error">No encontre ese partido ({error}).</p>
+        <Link to="/partidos">&larr; Volver a partidos</Link>
       </>
     )
   }
 
-  let resultado = 'Empate'
-  if (partido.golesLocal > partido.golesVisitante) resultado = `Ganó ${partido.local}`
-  if (partido.golesVisitante > partido.golesLocal) resultado = `Ganó ${partido.visitante}`
+  const jugado = partido.goles_local !== null && partido.goles_visitante !== null
+
+  // Tu misma logica de antes, con los nombres que usa la API.
+  let resultado = 'Todavia no se juega'
+  if (jugado) {
+    resultado = 'Empate'
+    if (partido.goles_local > partido.goles_visitante) resultado = `Gano ${partido.local}`
+    if (partido.goles_visitante > partido.goles_local) resultado = `Gano ${partido.visitante}`
+  }
 
   return (
-    <article>
-      <h2>{partido.local} vs {partido.visitante}</h2>
-      <ul>
-        <li>Marcador: {partido.golesLocal} - {partido.golesVisitante}</li>
-        <li>Resultado: {resultado}</li>
-        <li>Fecha: {partido.fecha}</li>
+    <article className="detalle">
+      <p className="etiquetas">
+        <span className="pildora">{partido.competicion}</span>
+        {partido.jornada && <span className="pildora">{partido.jornada}</span>}
+      </p>
+
+      <div className="marcador grande">
+        <span className="equipo">
+          {partido.local_logo && <img className="escudo" src={partido.local_logo} alt="" />}
+          {partido.local}
+        </span>
+        <strong className="resultado">
+          {jugado ? `${partido.goles_local} - ${partido.goles_visitante}` : 'vs'}
+        </strong>
+        <span className="equipo">
+          {partido.visitante_logo && (
+            <img className="escudo" src={partido.visitante_logo} alt="" />
+          )}
+          {partido.visitante}
+        </span>
+      </div>
+
+      <ul className="lista-datos">
+        <li><strong>Resultado:</strong> {resultado}</li>
+        <li><strong>Fecha:</strong> {formatearFecha(partido.fecha)}</li>
+        {partido.estadio && <li><strong>Estadio:</strong> {partido.estadio}</li>}
       </ul>
-      <Link to="/partidos">← Volver a partidos</Link>
+
+      <Link to="/partidos">&larr; Volver a partidos</Link>
     </article>
   )
 }
